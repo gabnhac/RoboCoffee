@@ -1,44 +1,42 @@
-#include "WiFiEsp.h" //INCLUSÃO DA BIBLIOTECA
-#include "SoftwareSerial.h"//INCLUSÃO DA BIBLIOTECA
+/* BIBLIOTECAS */
+#include "WiFiEsp.h"
+#include "SoftwareSerial.h"
 
+/* PARÂMETROS */
+#define IP 192,168,220,181
 #define velmotor 3
-#define map 11
-#define man 10
-#define mbp 9
-#define mbn 8
+#define IN1 11
+#define IN2 10
+#define IN3 9
+#define IN4 8
 #define temp 1000
 int vel = 0;
 
-SoftwareSerial Serial_pins(6, 7); //PINOS QUE EMULAM A SERIAL, ONDE O PINO 6 É O RX E O PINO 7 É O TX
+extern char ssid[];
+extern char pass[];
 
-char ssid[] = "Gabriel"; //VARIÁVEL QUE ARMAZENA O NOME DA REDE SEM FIO
-char pass[] = "gabiluce";//VARIÁVEL QUE ARMAZENA A SENHA DA REDE SEM FIO
+SoftwareSerial Serial_pins(6, 7); //OS PINOS 6 E 7 EMULAM, RESPECTIVAMENTE, O TX E O RX PARA COMUNICAÇÃO SERIAL
 
-int status = WL_IDLE_STATUS; //STATUS TEMPORÁRIO ATRIBUÍDO QUANDO O WIFI É INICIALIZADO E PERMANECE ATIVO
-//ATÉ QUE O NÚMERO DE TENTATIVAS EXPIRE (RESULTANDO EM WL_NO_SHIELD) OU QUE UMA CONEXÃO SEJA ESTABELECIDA
-//(RESULTANDO EM WL_CONNECTED)
+int status = WL_IDLE_STATUS; 
+/*STATUS TEMPORÁRIO ATRIBUÍDO QUANDO O WIFI É INICIALIZADO E PERMANECE ATIVO
+ATÉ QUE O NÚMERO DE TENTATIVAS EXPIRE (RESULTANDO EM WL_NO_SHIELD) OU QUE UMA CONEXÃO SEJA ESTABELECIDA
+(RESULTANDO EM WL_CONNECTED)*/
 
 WiFiEspServer server(8080); //CONEXÃO REALIZADA NA PORTA 80
 
 RingBuffer buf(8); //BUFFER PARA AUMENTAR A VELOCIDADE E REDUZIR A ALOCAÇÃO DE MEMÓRIA
 
-int statusLed = LOW; //VARIÁVEL QUE ARMAZENA O ESTADO ATUAL DO LED (LIGADO / DESLIGADO)
-
 void setup(){
-  pinMode(velmotor,OUTPUT);
-  pinMode(map, OUTPUT);
-  pinMode(man, OUTPUT);
-  pinMode(mbp, OUTPUT);
-  pinMode(mbn, OUTPUT);
-  digitalWrite(map, LOW);
-  digitalWrite(man, LOW);
-  digitalWrite(mbp, LOW);
-  digitalWrite(mbn, LOW);
+  /* DEFINIÇÃO DOS PINOS */
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
 
   Serial.begin(9600); //INICIALIZA A SERIAL
   Serial_pins.begin(9600); //INICIALIZA A SERIAL PARA O ESP8266
   WiFi.init(&Serial_pins); //INICIALIZA A COMUNICAÇÃO SERIAL COM O ESP8266
-  WiFi.config(IPAddress(192,168,0,181)); //COLOQUE UMA FAIXA DE IP DISPONÍVEL DO SEU ROTEADOR
+  WiFi.config(IPAddress(IP)); //COLOQUE UMA FAIXA DE IP DISPONÍVEL DO SEU ROTEADOR
 
   //INÍCIO - VERIFICA SE O ESP8266 ESTÁ CONECTADO AO ARDUINO, CONECTA A REDE SEM FIO E INICIA O WEBSERVER
   if(WiFi.status() == WL_NO_SHIELD){
@@ -63,40 +61,61 @@ void loop(){
 
         //IDENTIFICA O FIM DA REQUISIÇÃO HTTP E ENVIA UMA RESPOSTA
         if(buf.endsWith("\r\n\r\n")) {
-
+          client.println("HTTP/1.1 200 OK");
+          client.println("Content-Type: text/html");
+          client.println("");
+          client.println("<!DOCTYPE HTML>");
+          client.println("<html>");
+          client.println("<head>");
+          client.println("</head>");
+          client.println("<body>");
+          client.println("<h1>Programa Funcionando</h1>");
+          client.println("<hr />");
+          client.println("</body>"); 
+          client.println("</html>");
+          client.stop();
           break;
-        }
-        if(buf.endsWith("GET /H")) { //SE O PARÂMETRO DA REQUISIÇÃO VINDO POR GET FOR IGUAL A "H", FAZ 
-          vel = 255;
-          analogWrite(velmotor,vel);
 
-          digitalWrite(map, HIGH);
-          digitalWrite(man, LOW);
-          digitalWrite(mbp, HIGH);
-          digitalWrite(mbn, LOW);
-          delay(temp);
-          digitalWrite(map, LOW);
-          digitalWrite(man, LOW);
-          digitalWrite(mbp, LOW);
-          digitalWrite(mbn, LOW);
-          delay(temp);
-          digitalWrite(map, HIGH);
-          digitalWrite(man, LOW);
-          digitalWrite(mbp, HIGH);
-          digitalWrite(mbn, LOW);
-          delay(temp);
-          digitalWrite(map, LOW);
-          digitalWrite(man, LOW);
-          digitalWrite(mbp, LOW);
-          digitalWrite(mbn, LOW);
+        }
+        if(buf.endsWith("GET /L")) { //SE O PARÂMETRO DA REQUISIÇÃO VINDO POR GET FOR IGUAL A "L", INICIA A ROTINA LESTE
+          client.println("HTTP/1.1 200 OK");
+          client.println("Content-Type: text/html");
+          client.println("");
+          client.println("<!DOCTYPE HTML>");
+          client.println("<html>");
+          client.println("<head>");
+          client.println("</head>");
+          client.println("<body>");
+          client.println("<h1>Carro ligado</h1>");
+          client.println("<hr />");
+          client.println("</body>"); 
+          client.println("</html>");
+          delay(1000);
+          digitalWrite(IN1, HIGH);
+          digitalWrite(IN2, LOW);
+          digitalWrite(IN3, HIGH);
+          digitalWrite(IN4, LOW);
           client.stop();
         }
         else{ //SENÃO, FAZ
-        if (buf.endsWith("GET /L")) { //SE O PARÂMETRO DA REQUISIÇÃO VINDO POR GET FOR IGUAL A "L", FAZ
-            digitalWrite(map, LOW);
-          digitalWrite(man, LOW);
-          digitalWrite(mbp, LOW);
-          digitalWrite(mbn, LOW);
+        if (buf.endsWith("GET /S")) { //SE O PARÂMETRO DA REQUISIÇÃO VINDO POR GET FOR IGUAL A "S", PARA O MOVIMENTO DO CARRINHO
+          client.println("HTTP/1.1 200 OK");
+          client.println("Content-Type: text/html");
+          client.println("");
+          client.println("<!DOCTYPE HTML>");
+          client.println("<html>");
+          client.println("<head>");
+          client.println("</head>");
+          client.println("<body>");
+          client.println("<h1>Carro desligado</h1>");
+          client.println("<hr />");
+          client.println("</body>"); 
+          client.println("</html>");
+          delay(1000);
+          digitalWrite(IN1, LOW);
+          digitalWrite(IN2, LOW);
+          digitalWrite(IN3, LOW);
+          digitalWrite(IN4, LOW);
           client.stop();
           }
         }
