@@ -1,44 +1,45 @@
-#include "WiFiEsp.h" //INCLUSÃO DA BIBLIOTECA
-#include "SoftwareSerial.h"//INCLUSÃO DA BIBLIOTECA
+/* BIBLIOTECAS */
+#include "WiFiEsp.h"
+#include "SoftwareSerial.h"
 
-#define velmotor 3
-#define map 11
-#define man 10
-#define mbp 9
-#define mbn 8
+/* PARÂMETROS */
+#define IP 192,168,113,181 
+#define vel_m_e A1
+#define vel_m_d A0
+#define MD_H 11
+#define MD_AH 10
+#define ME_H 9
+#define ME_AH 8
 #define temp 1000
-int vel = 0;
 
-SoftwareSerial Serial_pins(6, 7); //PINOS QUE EMULAM A SERIAL, ONDE O PINO 6 É O RX E O PINO 7 É O TX
+extern char ssid[];
+extern char pass[];
 
-char ssid[] = "Gabriel"; //VARIÁVEL QUE ARMAZENA O NOME DA REDE SEM FIO
-char pass[] = "gabiluce";//VARIÁVEL QUE ARMAZENA A SENHA DA REDE SEM FIO
+SoftwareSerial Serial_pins(6, 7); //OS PINOS 6 E 7 EMULAM, RESPECTIVAMENTE, O TX E O RX PARA COMUNICAÇÃO SERIAL
 
-int status = WL_IDLE_STATUS; //STATUS TEMPORÁRIO ATRIBUÍDO QUANDO O WIFI É INICIALIZADO E PERMANECE ATIVO
-//ATÉ QUE O NÚMERO DE TENTATIVAS EXPIRE (RESULTANDO EM WL_NO_SHIELD) OU QUE UMA CONEXÃO SEJA ESTABELECIDA
-//(RESULTANDO EM WL_CONNECTED)
+int status = WL_IDLE_STATUS; 
+/*STATUS TEMPORÁRIO ATRIBUÍDO QUANDO O WIFI É INICIALIZADO E PERMANECE ATIVO
+ATÉ QUE O NÚMERO DE TENTATIVAS EXPIRE (RESULTANDO EM WL_NO_SHIELD) OU QUE UMA CONEXÃO SEJA ESTABELECIDA
+(RESULTANDO EM WL_CONNECTED)*/
 
-WiFiEspServer server(8080); //CONEXÃO REALIZADA NA PORTA 80
+WiFiEspServer server(8080); //CONEXÃO REALIZADA NA PORTA 8080
 
 RingBuffer buf(8); //BUFFER PARA AUMENTAR A VELOCIDADE E REDUZIR A ALOCAÇÃO DE MEMÓRIA
 
-int statusLed = LOW; //VARIÁVEL QUE ARMAZENA O ESTADO ATUAL DO LED (LIGADO / DESLIGADO)
-
 void setup(){
-  pinMode(velmotor,OUTPUT);
-  pinMode(map, OUTPUT);
-  pinMode(man, OUTPUT);
-  pinMode(mbp, OUTPUT);
-  pinMode(mbn, OUTPUT);
-  digitalWrite(map, LOW);
-  digitalWrite(man, LOW);
-  digitalWrite(mbp, LOW);
-  digitalWrite(mbn, LOW);
+  /* DEFINIÇÃO DOS PINOS */
+  pinMode(MD_H, OUTPUT);
+  pinMode(MD_AH, OUTPUT);
+  pinMode(ME_H, OUTPUT);
+  pinMode(ME_AH, OUTPUT);
+
+  pinMode(vel_m_e, OUTPUT);
+  pinMode(vel_m_d, OUTPUT);
 
   Serial.begin(9600); //INICIALIZA A SERIAL
   Serial_pins.begin(9600); //INICIALIZA A SERIAL PARA O ESP8266
   WiFi.init(&Serial_pins); //INICIALIZA A COMUNICAÇÃO SERIAL COM O ESP8266
-  WiFi.config(IPAddress(192,168,0,181)); //COLOQUE UMA FAIXA DE IP DISPONÍVEL DO SEU ROTEADOR
+  WiFi.config(IPAddress(IP)); //COLOQUE UMA FAIXA DE IP DISPONÍVEL DO SEU ROTEADOR
 
   //INÍCIO - VERIFICA SE O ESP8266 ESTÁ CONECTADO AO ARDUINO, CONECTA A REDE SEM FIO E INICIA O WEBSERVER
   if(WiFi.status() == WL_NO_SHIELD){
@@ -50,9 +51,14 @@ void setup(){
   }
   server.begin();
   //FIM - VERIFICA SE O ESP8266 ESTÁ CONECTADO AO ARDUINO, CONECTA A REDE SEM FIO E INICIA O WEBSERVER
+
+  //DEFINE VELOCIDADES DOS MOTORES ESQUERDO E DIREITO
+  analogWrite(vel_m_e, 254);
+  analogWrite(vel_m_d, 140);
 }
 
 void loop(){
+
   WiFiEspClient client = server.available(); //ATENDE AS SOLICITAÇÕES DO CLIENTE
   if (client) { //SE CLIENTE TENTAR SE CONECTAR, FAZ
     buf.init(); //INICIALIZA O BUFFER
@@ -63,79 +69,272 @@ void loop(){
 
         //IDENTIFICA O FIM DA REQUISIÇÃO HTTP E ENVIA UMA RESPOSTA
         if(buf.endsWith("\r\n\r\n")) {
-
+          client.println("HTTP/1.1 200 OK");
+          client.println("Content-Type: text/html");
+          client.println("");
+          client.println("<!DOCTYPE HTML>");
+          client.println("<html>");
+          client.println("<head>");
+          client.println("</head>");
+          client.println("<body>");
+          client.println("<h1>RoboCoffee pronto</h1>");
+          client.println("<hr />");
+          client.println("</body>"); 
+          client.println("</html>");
+          client.stop();
           break;
         }
-        if(buf.endsWith("GET /H")) { //SE O PARÂMETRO DA REQUISIÇÃO VINDO POR GET FOR IGUAL A "H", FAZ 
-          vel = 255;
-          analogWrite(velmotor,vel);
-
-          digitalWrite(map, HIGH);
-          digitalWrite(man, LOW);
-          digitalWrite(mbp, HIGH);
-          digitalWrite(mbn, LOW);
+        if(buf.endsWith("GET /L")) { //SE O PARÂMETRO DA REQUISIÇÃO VINDO POR GET FOR IGUAL A "L", INICIA A ROTINA LESTE
+          client.println("HTTP/1.1 200 OK");
+          client.println("Content-Type: text/html");
+          client.println("");
+          client.println("<!DOCTYPE HTML>");
+          client.println("<html>");
+          client.println("<head>");
+          client.println("</head>");
+          client.println("<body>");
+          client.println("<p>Rotina LESTE Iniciada</p>");
+          client.println("<hr/>");
+          client.println("</body>"); 
+          client.println("</html>");
+          //VIRA PARA DIREITA
+          digitalWrite(MD_H, LOW);
+          digitalWrite(MD_AH, LOW);
+          digitalWrite(ME_H, HIGH);
+          digitalWrite(ME_AH, LOW);
+          delay(540);
+          //PAUSA
+          digitalWrite(MD_H, LOW);
+          digitalWrite(MD_AH, LOW);
+          digitalWrite(ME_H, LOW);
+          digitalWrite(ME_AH, LOW);
           delay(temp);
-          digitalWrite(map, LOW);
-          digitalWrite(man, LOW);
-          digitalWrite(mbp, LOW);
-          digitalWrite(mbn, LOW);
+          //AVANÇA 
+          digitalWrite(MD_H, HIGH);
+          digitalWrite(MD_AH, LOW);
+          digitalWrite(ME_H, HIGH);
+          digitalWrite(ME_AH, LOW);
+          delay(2000);
+          //PAUSA
+          digitalWrite(MD_H, LOW);
+          digitalWrite(MD_AH, LOW);
+          digitalWrite(ME_H, LOW);
+          digitalWrite(ME_AH, LOW);
           delay(temp);
-          digitalWrite(map, HIGH);
-          digitalWrite(man, LOW);
-          digitalWrite(mbp, HIGH);
-          digitalWrite(mbn, LOW);
+          //VIRA PARA ESQUERDA
+          digitalWrite(MD_H, HIGH);
+          digitalWrite(MD_AH, LOW);
+          digitalWrite(ME_H, LOW);
+          digitalWrite(ME_AH, LOW);
+          delay(600);
+          //PAUSA
+          digitalWrite(MD_H, LOW);
+          digitalWrite(MD_AH, LOW);
+          digitalWrite(ME_H, LOW);
+          digitalWrite(ME_AH, LOW);
           delay(temp);
-          digitalWrite(map, LOW);
-          digitalWrite(man, LOW);
-          digitalWrite(mbp, LOW);
-          digitalWrite(mbn, LOW);
+          //AVANÇA 
+          digitalWrite(MD_H, HIGH);
+          digitalWrite(MD_AH, LOW);
+          digitalWrite(ME_H, HIGH);
+          digitalWrite(ME_AH, LOW);
+          delay(500);
+          //PAUSA
+          digitalWrite(MD_H, LOW);
+          digitalWrite(MD_AH, LOW);
+          digitalWrite(ME_H, LOW);
+          digitalWrite(ME_AH, LOW);
+          delay(temp);
+          //VIRA PARA ESQUERDA
+          digitalWrite(MD_H, HIGH);
+          digitalWrite(MD_AH, LOW);
+          digitalWrite(ME_H, LOW);
+          digitalWrite(ME_AH, LOW);
+          delay(600);
+          //PAUSA
+          digitalWrite(MD_H, LOW);
+          digitalWrite(MD_AH, LOW);
+          digitalWrite(ME_H, LOW);
+          digitalWrite(ME_AH, LOW);
+          delay(temp);
+          //AVANÇA
+          digitalWrite(MD_H, HIGH);
+          digitalWrite(MD_AH, LOW);
+          digitalWrite(ME_H, HIGH);
+          digitalWrite(ME_AH, LOW);
+          delay(4000);
+          //PAUSA
+          digitalWrite(MD_H, LOW);
+          digitalWrite(MD_AH, LOW);
+          digitalWrite(ME_H, LOW);
+          digitalWrite(ME_AH, LOW);
+          client.println("<p>Rotina LESTE Finalizada</p>");
           client.stop();
         }
-        else{ //SENÃO, FAZ
-        if (buf.endsWith("GET /L")) { //SE O PARÂMETRO DA REQUISIÇÃO VINDO POR GET FOR IGUAL A "L", FAZ
-            digitalWrite(map, LOW);
-          digitalWrite(man, LOW);
-          digitalWrite(mbp, LOW);
-          digitalWrite(mbn, LOW);
-          client.stop();
-          }
-        }
+        else  if(buf.endsWith("GET /O")) { //SE O PARÂMETRO DA REQUISIÇÃO VINDO POR GET FOR IGUAL A "O", EXECUTA ROTINA OESTE
+                client.println("HTTP/1.1 200 OK");
+                client.println("Content-Type: text/html");
+                client.println("");
+                client.println("<!DOCTYPE HTML>");
+                client.println("<html>");
+                client.println("<head>");
+                client.println("</head>");
+                client.println("<body>");
+                client.println("<p>Rotina OESTE Iniciada</p>");
+                client.println("<hr/>");
+                client.println("</body>"); 
+                client.println("</html>");
+                //VIRA PARA ESQUERDA
+                digitalWrite(MD_H, HIGH);
+                digitalWrite(MD_AH, LOW);
+                digitalWrite(ME_H, LOW);
+                digitalWrite(ME_AH, LOW);
+                delay(540);
+                //PAUSA
+                digitalWrite(MD_H, LOW);
+                digitalWrite(MD_AH, LOW);
+                digitalWrite(ME_H, LOW);
+                digitalWrite(ME_AH, LOW);
+                delay(temp);
+                //AVANÇA 
+                digitalWrite(MD_H, HIGH);
+                digitalWrite(MD_AH, LOW);
+                digitalWrite(ME_H, HIGH);
+                digitalWrite(ME_AH, LOW);
+                delay(2000);
+                //PAUSA
+                digitalWrite(MD_H, LOW);
+                digitalWrite(MD_AH, LOW);
+                digitalWrite(ME_H, LOW);
+                digitalWrite(ME_AH, LOW);
+                delay(temp);
+                //VIRA PARA DIREITA
+                digitalWrite(MD_H, LOW);
+                digitalWrite(MD_AH, LOW);
+                digitalWrite(ME_H, HIGH);
+                digitalWrite(ME_AH, LOW);
+                delay(600);
+                //PAUSA
+                digitalWrite(MD_H, LOW);
+                digitalWrite(MD_AH, LOW);
+                digitalWrite(ME_H, LOW);
+                digitalWrite(ME_AH, LOW);
+                delay(temp);
+                //AVANÇA 
+                digitalWrite(MD_H, HIGH);
+                digitalWrite(MD_AH, LOW);
+                digitalWrite(ME_H, HIGH);
+                digitalWrite(ME_AH, LOW);
+                delay(500);
+                //PAUSA
+                digitalWrite(MD_H, LOW);
+                digitalWrite(MD_AH, LOW);
+                digitalWrite(ME_H, LOW);
+                digitalWrite(ME_AH, LOW);
+                delay(temp);
+                //VIRA PARA DIREITA
+                digitalWrite(MD_H, LOW);
+                digitalWrite(MD_AH, LOW);
+                digitalWrite(ME_H, HIGH);
+                digitalWrite(ME_AH, LOW);
+                delay(600);
+                //PAUSA
+                digitalWrite(MD_H, LOW);
+                digitalWrite(MD_AH, LOW);
+                digitalWrite(ME_H, LOW);
+                digitalWrite(ME_AH, LOW);
+                delay(temp);
+                //AVANÇA
+                digitalWrite(MD_H, HIGH);
+                digitalWrite(MD_AH, LOW);
+                digitalWrite(ME_H, HIGH);
+                digitalWrite(ME_AH, LOW);
+                delay(4000);
+                //PAUSA
+                digitalWrite(MD_H, LOW);
+                digitalWrite(MD_AH, LOW);
+                digitalWrite(ME_H, LOW);
+                digitalWrite(ME_AH, LOW);
+                client.println("<p>Rotina OESTE Finalizada</p>");
+                client.stop();
+              }
+              else  if(buf.endsWith("GET /I")) { //SE O PARÂMETRO DA REQUISIÇÃO VINDO POR GET FOR IGUAL A "I", EXECUTA ROTINA INTERMEDIÁRIA
+                      client.println("HTTP/1.1 200 OK");
+                      client.println("Content-Type: text/html");
+                      client.println("");
+                      client.println("<!DOCTYPE HTML>");
+                      client.println("<html>");
+                      client.println("<head>");
+                      client.println("</head>");
+                      client.println("<body>");
+                      client.println("<p>Rotina INTERMEDIÁRIA iniciada</p>");
+                      client.println("<hr/>");
+                      client.println("</body>"); 
+                      client.println("</html>");
+                      //AVANÇA 
+                      digitalWrite(MD_H, HIGH);
+                      digitalWrite(MD_AH, LOW);
+                      digitalWrite(ME_H, HIGH);
+                      digitalWrite(ME_AH, LOW);
+                      delay(3000);
+                      //PAUSA
+                      digitalWrite(MD_H, LOW);
+                      digitalWrite(MD_AH, LOW);
+                      digitalWrite(ME_H, LOW);
+                      digitalWrite(ME_AH, LOW);
+                      delay(temp);
+                      //VIRA PARA DIREITA
+                      digitalWrite(MD_H, LOW);
+                      digitalWrite(MD_AH, LOW);
+                      digitalWrite(ME_H, HIGH);
+                      digitalWrite(ME_AH, LOW);
+                      delay(600);
+                      //PAUSA
+                      digitalWrite(MD_H, LOW);
+                      digitalWrite(MD_AH, LOW);
+                      digitalWrite(ME_H, LOW);
+                      digitalWrite(ME_AH, LOW);
+                      delay(temp);
+                      //AVANÇA 
+                      digitalWrite(MD_H, HIGH);
+                      digitalWrite(MD_AH, LOW);
+                      digitalWrite(ME_H, HIGH);
+                      digitalWrite(ME_AH, LOW);
+                      delay(500);
+                      //PAUSA
+                      digitalWrite(MD_H, LOW);
+                      digitalWrite(MD_AH, LOW);
+                      digitalWrite(ME_H, LOW);
+                      digitalWrite(ME_AH, LOW);
+                      delay(temp);
+                      //VIRA PARA DIREITA
+                      digitalWrite(MD_H, LOW);
+                      digitalWrite(MD_AH, LOW);
+                      digitalWrite(ME_H, HIGH);
+                      digitalWrite(ME_AH, LOW);
+                      delay(600);
+                      //PAUSA
+                      digitalWrite(MD_H, LOW);
+                      digitalWrite(MD_AH, LOW);
+                      digitalWrite(ME_H, LOW);
+                      digitalWrite(ME_AH, LOW);
+                      delay(temp);
+                      //AVANÇA
+                      digitalWrite(MD_H, HIGH);
+                      digitalWrite(MD_AH, LOW);
+                      digitalWrite(ME_H, HIGH);
+                      digitalWrite(ME_AH, LOW);
+                      delay(3000);
+                      //PAUSA
+                      digitalWrite(MD_H, LOW);
+                      digitalWrite(MD_AH, LOW);
+                      digitalWrite(ME_H, LOW);
+                      digitalWrite(ME_AH, LOW);
+                      client.println("<p>Rotina INTERMEDIÁRIA finalizada</p>");
+                      client.stop();
+                    }
+              
       }
     }
   }
-}
-
-//MÉTODO DE RESPOSTA A REQUISIÇÃO HTTP DO CLIENTE
-void sendHttpResponse(WiFiEspClient client){
-  client.println("HTTP/1.1 200 OK"); //ESCREVE PARA O CLIENTE A VERSÃO DO HTTP
-  client.println("Content-Type: text/html"); //ESCREVE PARA O CLIENTE O TIPO DE CONTEÚDO(texto/html)
-  client.println("");
-  client.println("<!DOCTYPE HTML>"); //INFORMA AO NAVEGADOR A ESPECIFICAÇÃO DO HTML
-  client.println("<html>"); //ABRE A TAG "html"
-  client.println("<head>"); //ABRE A TAG "head"
-  client.println("<link rel='icon' type='image/png' href='https://blogmasterwalkershop.com.br/arquivos/artigos/sub_wifi/icon_mws.png'/>"); //DEFINIÇÃO DO ICONE DA PÁGINA
-  client.println("<link rel='stylesheet' type='text/css' href='https://blogmasterwalkershop.com.br/arquivos/artigos/sub_wifi/webpagecss.css' />"); //REFERENCIA AO ARQUIVO CSS (FOLHAS DE ESTILO)
-  client.println("<title>MasterWalker Shop - Adaptador Conector 3.3V / 5V para o Modulo WiFi ESP8266 ESP-01</title>"); //ESCREVE O TEXTO NA PÁGINA
-  client.println("</head>"); //FECHA A TAG "head"
-  
-  //AS LINHAS ABAIXO CRIAM A PÁGINA HTML
-  client.println("<body>"); //ABRE A TAG "body"
-  client.println("<img alt='masterwalkershop' src='https://blogmasterwalkershop.com.br/arquivos/artigos/sub_wifi/logo_mws.png' height='156' width='700' />"); //LOGO DA MASTERWALKER SHOP
-  client.println("<p style='line-height:2'><font>Adaptador Conector 3.3V / 5V para o Modulo WiFi ESP8266 ESP-01</font></p>"); //ESCREVE O TEXTO NA PÁGINA
-  client.println("<font>ESTADO ATUAL DO LED</font>"); //ESCREVE O TEXTO NA PÁGINA
-  
-  if (statusLed == HIGH){ //SE VARIÁVEL FOR IGUAL A HIGH (1), FAZ
-    client.println("<p style='line-height:0'><font color='green'>LIGADO</font></p>"); //ESCREVE "LIGADO" NA PÁGINA
-    client.println("<a href=\"/L\">APAGAR</a>"); //COMANDO PARA APAGAR O LED (PASSA O PARÂMETRO /L)
-  }else{ //SENÃO, FAZ
-    if (statusLed == LOW){ //SE VARIÁVEL FOR IGUAL A LOW (0), FAZ
-    client.println("<p style='line-height:0'><font color='red'>DESLIGADO</font></p>"); //ESCREVE "DESLIGADO" NA PÁGINA
-    client.println("<a href=\"/H\">ACENDER</a>"); //COMANDO PARA ACENDER O LED (PASSA O PARÂMETRO /H)
-    }
-  }
-  client.println("<hr />"); //TAG HTML QUE CRIA UMA LINHA NA PÁGINA
-  client.println("<hr />"); //TAG HTML QUE CRIA UMA LINHA NA PÁGINA
-  client.println("</body>"); //FECHA A TAG "body"
-  client.println("</html>"); //FECHA A TAG "html"
-  delay(1); //INTERVALO DE 1 MILISSEGUNDO
 }
