@@ -3,7 +3,7 @@
 #include "SoftwareSerial.h"
 
 /* PARÂMETROS */
-#define IP 192,168,113,181
+#define IP 192,168,113,181 
 #define vel_m_e A1
 #define vel_m_d A0
 #define MD_H 11
@@ -22,7 +22,7 @@ int status = WL_IDLE_STATUS;
 ATÉ QUE O NÚMERO DE TENTATIVAS EXPIRE (RESULTANDO EM WL_NO_SHIELD) OU QUE UMA CONEXÃO SEJA ESTABELECIDA
 (RESULTANDO EM WL_CONNECTED)*/
 
-WiFiEspServer server(8080); //CONEXÃO REALIZADA NA PORTA 80
+WiFiEspServer server(8080); //CONEXÃO REALIZADA NA PORTA 8080
 
 RingBuffer buf(8); //BUFFER PARA AUMENTAR A VELOCIDADE E REDUZIR A ALOCAÇÃO DE MEMÓRIA
 
@@ -258,7 +258,7 @@ void loop(){
                 client.println("<p>Rotina OESTE Finalizada</p>");
                 client.stop();
               }
-              else  if(buf.endsWith("GET /I")) { //SE O PARÂMETRO DA REQUISIÇÃO VINDO POR GET FOR IGUAL A "O", EXECUTA ROTINA OESTE
+              else  if(buf.endsWith("GET /I")) { //SE O PARÂMETRO DA REQUISIÇÃO VINDO POR GET FOR IGUAL A "I", EXECUTA ROTINA INTERMEDIÁRIA
                       client.println("HTTP/1.1 200 OK");
                       client.println("Content-Type: text/html");
                       client.println("");
@@ -330,7 +330,7 @@ void loop(){
                       digitalWrite(MD_AH, LOW);
                       digitalWrite(ME_H, LOW);
                       digitalWrite(ME_AH, LOW);
-                      client.println("<p>Rotina OESTE Finalizada</p>");
+                      client.println("<p>Rotina INTERMEDIÁRIA finalizada</p>");
                       client.stop();
                     }
               
